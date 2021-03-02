@@ -32,8 +32,10 @@ class Grid:
 
     def neighbors(self, pt: Point) -> Point:
         for x, y in pt.neighbors():
-            if (x, y) in self.points:
-                yield self.points[(x, y)]
+            if (x, y) not in self.points:
+                continue
+            
+            yield self.points[(x, y)]
 
     def get(self, x, y):
         return self.points.get((x, y))
@@ -47,6 +49,7 @@ if __name__ == '__main__':
     grid = Grid(1, 1)
 
     grid.add(0, 0, ".")
+    grid.add(0, 1, ".")
 
     o = grid.get(0, 0)
 
