@@ -44,14 +44,32 @@ class Grid:
         self.points[(x, y)] = Point(x, y, t)
 
 
+    def load(self, maze):
+        for x, row in enumerate(maze.splitlines()):
+            for y, topo in enumerate(row):
+                self.add(x, y, topo)
+
+
 if __name__ == '__main__':
+    maze = """##########
+#...#....#
+###.##.#.#
+#.#..###.#
+#.##.#...#
+#..#.###.#
+#.##...#.#
+#..###.#.#
+#........#
+##########"""
 
-    grid = Grid(1, 1)
+    h = len(maze.splitlines())
+    w = len(maze.splitlines()[0])
 
-    grid.add(0, 0, ".")
-    grid.add(0, 1, ".")
+    grid = Grid(h, w)
 
-    o = grid.get(0, 0)
+    grid.load(maze)
+
+    o = grid.get(1, 1)
 
     for pt in grid.neighbors(o):
         print("{}".format(pt))
