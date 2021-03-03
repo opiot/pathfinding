@@ -1,8 +1,4 @@
-
-
-
 class Location:
-
     def _init_(self, x, y, content):
         self.x = x
         self.y = y
@@ -20,14 +16,12 @@ class Node:
         self.h = 0
         self.f = 0
 
-
     def neighbours(self):
         for direction in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
             yield (self.position[0] + direction[0], self.position[1] + direction[1])
 
     def __eq__(self, other):
         return self.position == other.position
-
 
 
 class Grid:
@@ -45,17 +39,14 @@ class Grid:
     @property
     def width(self):
         return self._w
-    
+
     @property
     def node(self, position):
         return self._nodes.get(position)
 
-
     @node.setter
     def node(self, node):
         self._nodes[node]
-
-
 
 
 def astar(maze, start, end):
@@ -96,17 +87,25 @@ def astar(maze, start, end):
             while current is not None:
                 path.append(current.position)
                 current = current.parent
-            return path[::-1] # Return reversed path
+            return path[::-1]  # Return reversed path
 
         # Generate children
         children = []
-        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]: # Adjacent squares
+        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]:  # Adjacent squares
 
             # Get node position
-            node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
+            node_position = (
+                current_node.position[0] + new_position[0],
+                current_node.position[1] + new_position[1],
+            )
 
             # Make sure within range
-            if node_position[0] > (len(maze) - 1) or node_position[0] < 0 or node_position[1] > (len(maze[len(maze)-1]) -1) or node_position[1] < 0:
+            if (
+                node_position[0] > (len(maze) - 1)
+                or node_position[0] < 0
+                or node_position[1] > (len(maze[len(maze) - 1]) - 1)
+                or node_position[1] < 0
+            ):
                 continue
 
             # Make sure walkable terrain
@@ -129,7 +128,9 @@ def astar(maze, start, end):
 
             # Create the f, g, and h values
             child.g = current_node.g + 1
-            child.h = ((child.position[0] - end_node.position[0]) ** 2) + ((child.position[1] - end_node.position[1]) ** 2)
+            child.h = ((child.position[0] - end_node.position[0]) ** 2) + (
+                (child.position[1] - end_node.position[1]) ** 2
+            )
             child.f = child.g + child.h
 
             # Child is already in the open list
@@ -155,19 +156,19 @@ def main():
 ##########"""
     h = len(maze.splitlines())
     w = len(maze.splitlines()[0])
-    start =(1, 1)
+    start = (1, 1)
     target = (8, 8)
 
-    grid = Grid(h,w)
+    grid = Grid(h, w)
 
     for x, row in enumerate(maze.splitlines()):
         for y, c in enumerate(row):
             if c == "#":
-                grid.walls += [(x, y)]  
+                grid.walls += [(x, y)]
 
     path = astar(maze, start, target)
     print(path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
