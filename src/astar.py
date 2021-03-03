@@ -1,17 +1,62 @@
 
-class Node():
+
+
+class Location:
+
+    def _init_(self, x, y, content):
+        self.x = x
+        self.y = y
+        self.content = content
+
+
+class Node:
     """A node class for A* Pathfinding"""
 
     def __init__(self, parent=None, position=None):
-        self.parent = parent
-        self.position = position
+        self._parent = parent
+        self._position = position
 
         self.g = 0
         self.h = 0
         self.f = 0
 
+
+    def neighbours(self):
+        for direction in [(0, -1), (0, 1), (-1, 0), (1, 0)]:
+            yield (self.position[0] + direction[0], self.position[1] + direction[1])
+
     def __eq__(self, other):
         return self.position == other.position
+
+
+
+class Grid:
+    """A grid class"""
+
+    def __init__(self, h, w):
+        self._h = h
+        self._w = w
+        self._nodes = {}
+
+    @property
+    def height(self):
+        return self._h
+
+    @property
+    def width(self):
+        return self._w
+    
+    @property
+    def node(self, position):
+        return self._nodes.get(position)
+
+
+    @node.setter
+    def node(self, node):
+        self._nodes[node]
+
+
+
 
 def astar(maze, start, end):
     """Returns a list of tuples as a path from the given start to the given end in the given maze"""
@@ -55,7 +100,7 @@ def astar(maze, start, end):
 
         # Generate children
         children = []
-        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0), (-1, -1), (-1, 1), (1, -1), (1, 1)]: # Adjacent squares
+        for new_position in [(0, -1), (0, 1), (-1, 0), (1, 0)]: # Adjacent squares
 
             # Get node position
             node_position = (current_node.position[0] + new_position[0], current_node.position[1] + new_position[1])
@@ -65,7 +110,7 @@ def astar(maze, start, end):
                 continue
 
             # Make sure walkable terrain
-            if maze[node_position[0]][node_position[1]] != 0:
+            if maze[node_position[0]][node_position[1]] != ".":
                 continue
 
             # Create new node
@@ -98,21 +143,29 @@ def astar(maze, start, end):
 
 def main():
 
-    maze = [[0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]]
+    maze = """##########
+#...#....#
+###.##.#.#
+#.#..###.#
+#.##.#...#
+#..#.###.#
+#.##...#.#
+#..###.#.#
+#........#
+##########"""
+    h = len(maze.splitlines())
+    w = len(maze.splitlines()[0])
+    start =(1, 1)
+    target = (8, 8)
 
-    start = (0, 0)
-    end = (7, 6)
+    grid = Grid(h,w)
 
-    path = astar(maze, start, end)
+    for x, row in enumerate(maze.splitlines()):
+        for y, c in enumerate(row):
+            if c == "#":
+                grid.walls += [(x, y)]  
+
+    path = astar(maze, start, target)
     print(path)
 
 
