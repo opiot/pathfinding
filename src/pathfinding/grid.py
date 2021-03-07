@@ -12,6 +12,9 @@ class Point:
     def is_crossing(self):
         return self.topography == "."
 
+    def is_blocked(self):
+        return self.topography == "#"
+
     def neighbors(self):
         for x, y in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
             yield (self.x + x, self.y + y)
@@ -40,12 +43,14 @@ class Grid:
     w: int
     points: Dict = field(default_factory=dict)
 
-    def neighbors(self, pt: Point) -> Point:
+    def neighbors(self, pt: Point, walk=False) -> Point:
         for x, y in pt.neighbors():
             if (x, y) not in self.points:
                 continue
+            if walk and self.get(x, y).is_blocked():
+                continue
 
-            yield self.points[(x, y)]
+            yield self.get(x, y)
 
     def get(self, x, y):
         return self.points.get((x, y))
@@ -85,7 +90,7 @@ class Grid:
             # Add it to the closed set
             closedset.add(current)
             # Loop through the node's children/siblings
-            for neighbor in self.neighbors(current.point):
+            for neighbor in self.neighbors(current.point, walk=True):
                 # If it is already in the closed set, skip it
                 node = Node(neighbor)
                 if node in closedset:
@@ -109,6 +114,16 @@ class Grid:
                     openset.add(node)
         # Throw an exception if there is no path
         return []
+
+    def __str__(self) -> str:
+        grid = ""
+        row = 0
+        for (x, _), pt in self.points.items():
+            if row != x:
+                grid += "\n"
+                row = x
+            grid += pt.topography
+        return grid
 
 
 if __name__ == "__main__":
@@ -141,3 +156,5 @@ if __name__ == "__main__":
     path = grid.astar(start, end)
     for node in path:
         print(node.point)
+
+    print(grid)
