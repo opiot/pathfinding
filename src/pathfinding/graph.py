@@ -13,8 +13,11 @@ class Grid:
         self.back = False
         self._gate = None
         self._room = None
+        self._explore = (-1, -1)
 
     def load(self, grid):
+        self.squares = {}
+        self.unknowns = {}
         for x, row in enumerate(grid):
             for y, square in enumerate(row):
                 location = (x, y)
@@ -155,8 +158,11 @@ class Grid:
         elif self.back:
             goal = self.gate()   
            
+        elif self._explore in self.unknowns:
+            goal = self._explore
         else:
             goal = self.explore(location)
+            self._explore = goal
 
         print("goal: {}".format(goal), file=sys.stderr, flush=True) 
 

@@ -159,11 +159,11 @@ def test_shortest_path():
 #...#..####################..#
 #............................#
 ##############################"""
-    grid = Grid(15, 30, 70)
+    grid = Grid(15, 30, 76)
     grid.load(square.splitlines())
 
     len(grid.astar(grid.room(), grid.gate())) == 71
 
     kirk = grid.get(12, 1)
     move = grid.move(kirk)
-    assert move == "LEFT"
+    assert move == "UP"
