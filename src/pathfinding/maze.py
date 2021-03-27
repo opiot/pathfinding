@@ -1,130 +1,194 @@
-from typing import Tuple
-from typing import List
-from typing import Iterator
-from typing import Optional
-from typing import Dict
-from typing import TypeVar
-import heapq
-
-
-H = 10
-W = 30
-
-Location = Tuple[int, int]
-T = TypeVar("T")
+import sys
+from queue import Queue
 
 
 class Grid:
-    def __init__(self, width: int, height: int):
-        self.width = width
-        self.height = height
-        self.walls: List[Location] = []
-        self.unknown: List[Location] = []
-        self.weights: Dict[Location, int] = {}
-
-    def in_bounds(self, id: Location) -> bool:
-        (x, y) = id
-        return 0 <= x < self.width and 0 <= y < self.height
-
-    def passable(self, id: Location) -> bool:
-        return id not in self.walls + self.unknown
-
-    def neighbors(self, id: Location) -> Iterator[Location]:
-        (x, y) = id
-        neighbors = [(x + 1, y), (x - 1, y), (x, y - 1), (x, y + 1)]  # E W N S
-        # see "Ugly paths" section for an explanation:
-        if (x + y) % 2 == 0:
-            neighbors.reverse()  # S N W E
-        results = filter(self.in_bounds, neighbors)
-        results = filter(self.passable, results)
-        return results
-
-    def cost(self, from_node: Location, to_node: Location) -> int:
-        return self.weights.get(to_node, 1)
+    def __init__(self, h, w):
+        self.h = h
+        self.w = w
+        self.squares = {}
+        self.traps = {}
+        self.balls = {}
+        self.switches = {}
+        self.bender = None
+        self.fry = None
 
 
-def heuristic(a: Location, b: Location) -> int:
-    # Manathan Disctance
-    (x1, y1) = a
-    (x2, y2) = b
-    return abs(x1 - x2) + abs(y1 - y2)
+    def load(self, grid):
+        self.squares = {}
+        for y, row in enumerate(grid):
+            for x, square in enumerate(row):
+                location = (x, y)
+                if square == ".":
+                    self.squares[location] = square
+                    continue
+                if square == "+":
+                    self.balls[location] = square
 
 
-class PriorityQueue:
-    def __init__(self):
-        self.elements: List[Tuple[int, T]] = []
-
-    def empty(self) -> bool:
-        return not self.elements
-
-    def put(self, item: T, priority: int):
-        heapq.heappush(self.elements, (priority, item))
-
-    def get(self) -> T:
-        return heapq.heappop(self.elements)[1]
+    def load_switches(self, lines):
+        for line in lines:
+            s_x, s_y, t_x, t_y, state = line
+            self.traps[(t_x, t_y)] = {'state' : state, 'switch': (s_x, s_y)}
+            self.switches[(s_x, s_y)] = (t_x, t_y)
 
 
-def a_star_search(grid: Grid, start: Location, goal: Location):
-    frontier = PriorityQueue()
-    frontier.put(start, 0)
-    came_from: Dict[Location, Optional[Location]] = {}
-    cost_so_far: Dict[Location, float] = {}
-    came_from[start] = None
-    cost_so_far[start] = 0
 
-    while not frontier.empty():
-        current: Location = frontier.get()
+    def square(self, location):
+        if location == self.bender:
+            return "B"        
+        if location == self.fry:
+            return "F"
+        if location in self.traps:
+            if self.traps[location]["state"] == 0:
+                return "U"
+            else:
+                return "T"
+        if location in self.switches:
+            return "S"            
+        if location in self.balls:
+            return self.balls[location]
 
-        if current == goal:
-            break
-
-        for next in grid.neighbors(current):
-            new_cost = cost_so_far[current] + grid.cost(current, next)
-            if next not in cost_so_far or new_cost < cost_so_far[next]:
-                cost_so_far[next] = new_cost
-                priority = new_cost + heuristic(next, goal)
-                frontier.put(next, priority)
-                came_from[next] = current
-
-    return came_from, cost_so_far
+        if location in self.squares:
+            return self.squares[location]
 
 
-def reconstruct_path(
-    came_from: Dict[Location, Location], start: Location, goal: Location
-) -> List[Location]:
-    current: Location = goal
-    path: List[Location] = []
-    while current != start:
-        try:
-            path.append(current)
-            current = came_from[current]
-        except KeyError:
-            return []
+        return "#"
 
-    return path
+    def neighbors(self, location):
+        for x, y in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            square = (location[0] + x, location[1] + y)
+            if square in self.squares:
+                yield square
+
+    @staticmethod
+    def direction(pt1, pt2):
+        if pt2[0] - pt1[0] == 1:
+            return "D"
+        if pt2[0] - pt1[0] == -1:
+            return "U"        
+        if pt2[1] - pt1[1] == 1:
+            return "R"
+        if pt2[1] - pt1[1] == -1:
+            return "L"    
 
 
-def main():
+    @staticmethod
+    def reconstruct_path(came_from, start, goal):
+        current = goal
+        path = []
+        while current != start:
+            try:
+                path.append(current)
+                current = came_from[current]
+            except KeyError:
+                return []
 
-    maze = """??????????????
-?###########??
-?#..........??
-?###########??
-??????????????
-"""
-    h = len(maze.splitlines())
-    w = len(maze.splitlines()[0])
+        return path
 
-    # start = (3, 3)
+    def switch(self, loc):
+        trap = self.switches[loc]
+        if self.traps[trap]["state"] == 0:
+            self.traps[trap]["state"] = 1
+        else:
+            self.traps[trap]["state"] = 0
 
-    grid = Grid(h, w)
-    for x, row in enumerate(maze.splitlines()):
-        for y, c in enumerate(row):
-            if c == "#":
-                grid.walls += [(x, y)]
-            if c == "?":
-                grid.unknown += [(x, y)]
+
+    def explore(self, path):
+        activated = []
+        switch = None
+        for pt in path:
+            if pt in self.switches:
+                activated += [pt]
+                self.switch(pt)
+            if pt in self.traps and self.traps[pt]["state"] == 1:                
+                switch =  self.traps[pt]["switch"]
+                break
+
+        for a in activated:
+            self.switch(a)
+        
+        if switch:
+            return switch
+
+        return path[-1]
+
+
+    def _bfs(self, start, goal):
+        frontier = Queue()
+        frontier.put(start)
+        came_from = dict()
+        came_from[start] = None
+
+        while not frontier.empty():
+            current = frontier.get()
+
+            if current == goal:
+                break
+
+            for next in self.neighbors(current):
+                if next not in came_from:
+                    frontier.put(next)
+                    came_from[next] = current
+
+        return came_from
+
+
+    def bfs(self,start, goal):
+        came_from = self._bfs(start, goal)
+        path = self.reconstruct_path(came_from, start, goal)
+        return path[::-1]
+
+
+
+    def checkpoint(self, start, target):
+            segment = self.bfs(start, target)
+            current = self.explore(segment)
+            if current == target:
+                return target
+            
+            return self.checkpoint(start, current), self.checkpoint(current, target)
+
+
+    def move(self,start, target):
+        pass
+        
+
+    def __str__(self) -> str:
+        rows = []
+
+        for y in range(0, self.h):
+            row = ""
+            for x in range(0, self.w):
+                row += self.square((x, y))
+            rows += [row]
+
+        return "\n".join(rows)[:]
 
 
 if __name__ == "__main__":
-    main()
+    square = """##########
+#........#
+#.######.#
+#........#
+########.#
+#..#.###.#
+#.##...#.#
+#..###.#.#
+#........#
+##########"""
+    w = 10
+    h = 10
+    start = (3, 3)
+    target = (8, 3)
+    switches = [[2, 3, 7, 3, 1]]
+    grid = Grid(w, h)
+    grid.bender = start
+    grid.fry = target
+    grid.load(square.splitlines())
+    grid.load_switches(switches)
+
+    print(grid.checkpoint(start, target))
+
+    # print(grid)
+
